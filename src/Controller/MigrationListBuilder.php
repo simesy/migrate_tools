@@ -104,12 +104,12 @@ class MigrationListBuilder extends ConfigEntityListBuilder implements EntityHand
     else {
       $row['unprocessed'] = $row['total'] - $map->processedCount();
     }
-    $group = $migration->get('migration_group');
-    if (!$group) {
-      $group = 'default';
+    $migration_group = $migration->getThirdPartySetting('migrate_plus', 'migration_group');
+    if (!$migration_group) {
+      $migration_group = 'default';
     }
     // @todo: This is most likely not a Best Practice (tm).
-    $row['messages']['data']['#markup'] = '<a href="/admin/structure/migrate/manage/' . $group . '/migrations/' . $migration->id() . '/messages">' . $map->messageCount() .'</a>';
+    $row['messages']['data']['#markup'] = '<a href="/admin/structure/migrate/manage/' . $migration_group . '/migrations/' . $migration->id() . '/messages">' . $map->messageCount() .'</a>';
     $migrate_last_imported_store = \Drupal::keyValue('migrate_last_imported');
     $last_imported =  $migrate_last_imported_store->get($migration->id(), FALSE);
     if ($last_imported) {
@@ -148,10 +148,10 @@ class MigrationListBuilder extends ConfigEntityListBuilder implements EntityHand
     $migration_group = $this->currentRouteMatch->getParameter('migration_group');
     // Add groupless migrations to the default group.
     if ($migration_group == 'default') {
-      $query->notExists('migration_group');
+      $query->notExists('third_party_settings.migrate_plus.migration_group');
     }
     return $query
-      ->condition('migration_group', $migration_group)
+      ->condition('third_party_settings.migrate_plus.migration_group', $migration_group)
       ->sort($keys['id'])
       ->pager($this->limit)
       ->execute();
@@ -162,7 +162,7 @@ class MigrationListBuilder extends ConfigEntityListBuilder implements EntityHand
    */
   public function getDefaultOperations(MigrationInterface $entity) {
     $operations = parent::getDefaultOperations($entity);
-    $migration_group = $entity->get('migration_group');
+    $migration_group = $entity->getThirdPartySetting('migrate_plus', 'migration_group');
     if (!$migration_group) {
       $migration_group = 'default';
     }

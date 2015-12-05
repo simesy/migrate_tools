@@ -378,7 +378,7 @@ function drush_migrate_tools_migrate_messages($migration_id) {
 function drush_migrate_tools_migration_list($group_id = '', $migration_ids = '') {
   $query = \Drupal::entityQuery('migration');
   if ($group_id) {
-    $query->condition('migration_group', $group_id);
+    $query->condition('third_party_settings.migrate_plus.migration_group', $group_id);
   }
   $names = $query->execute();
 
@@ -398,7 +398,7 @@ function drush_migrate_tools_migration_list($group_id = '', $migration_ids = '')
   $return = [];
   foreach ($migrations as $migration_id => $migration) {
     if (empty($migration_ids) || in_array(Unicode::strtolower($migration_id), $migration_ids)) {
-      $group_id = $migration->get('migration_group');
+      $group_id = $migration->getThirdPartySetting('migrate_plus', 'migration_group');
       if (!empty($group_id)) {
         $return[$group_id][$migration_id] = $migration;
       }
