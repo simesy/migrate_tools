@@ -44,6 +44,7 @@ function migrate_tools_drush_command() {
       'idlist' => 'Comma-separated list of IDs to import',
       'update' => ' In addition to processing unprocessed items from the source, update previously-imported items with the current data',
       'force' => 'Force an operation to run, even if all dependencies are not satisfied',
+      'execute-dependencies' => 'Execute all dependent migrations first.',
     ],
     'arguments' => [
       'migration' => 'Name of migration(s) to import. Delimit multiple using commas.',
@@ -205,36 +206,48 @@ function drush_migrate_tools_migrate_import($migration_names = '') {
     return;
   }
 
-  if (drush_get_option('limit')) {
-    $options['limit'] = drush_get_option('limit');
+  foreach (['limit', 'feedback', 'idlist', 'update', 'force'] as $option) {
+    if (drush_get_option($option)) {
+      $options[$option] = drush_get_option($option);
+    }
   }
-  if (drush_get_option('feedback')) {
-    $options['feedback'] = drush_get_option('feedback');
-  }
-  if (drush_get_option('idlist')) {
-    $options['idlist'] = drush_get_option('idlist');
-  }
-  $update = drush_get_option('update');
-  $force = drush_get_option('force');
-
-  $log = new DrushLogMigrateMessage();
 
   $migrations = drush_migrate_tools_migration_list($group_name, $migration_names);
 
   // Take it one group at a time, importing the migrations within each group.
   foreach ($migrations as $group_id => $migration_list) {
-    foreach ($migration_list as $migration_id => $migration) {
-      if ($force) {
-        $migration->set('requirements', []);
-      }
-      if ($update) {
-        $migration->getIdMap()->prepareUpdate();
-      }
-      $executable = new MigrateExecutable($migration, $log, $options);
-      // drush_op() provides --simulate support.
-      drush_op([$executable, 'import']);
-    }
+    array_walk($migration_list, '_drush_migrate_tools_execute_migration');
   }
+}
+
+/**
+ * Executes a single migration. If the --execute-dependencies option was given,
+ * the migration's dependencies will also be executed first.
+ *
+ * @param \Drupal\migrate\Entity\MigrationInterface $migration
+ *  The migration to execute.
+ * @param string $migration_id
+ *  The migration ID (not used, just an artifact of array_walk()).
+ * @param array $options
+ *  Additional options for the migration.
+ */
+function _drush_migrate_tools_execute_migration(MigrationInterface $migration, $migration_id,  array $options = []) {
+  $log = new DrushLogMigrateMessage();
+
+  if (drush_get_option('execute-dependencies')) {
+    $required_migrations = entity_load_multiple('migration', $migration->get('requirements'));
+    $dependency_options = array_merge($options, ['is_dependency' => TRUE]);
+    array_walk($required_migrations, __FUNCTION__, $dependency_options);
+  }
+  if ($options['force']) {
+    $migration->set('requirements', []);
+  }
+  if ($options['update']) {
+    $migration->getIdMap()->prepareUpdate();
+  }
+  $executable = new MigrateExecutable($migration, $log, $options);
+  // drush_op() provides --simulate support
+  drush_op(array($executable, 'import'));
 }
 
 /**
