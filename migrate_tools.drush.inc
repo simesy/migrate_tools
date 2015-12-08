@@ -112,6 +112,18 @@ function migrate_tools_drush_command() {
     'aliases' => ['mmsg'],
   ];
 
+  $items['migrate-fields-source'] = [
+    'description' => 'List the fields available for mapping in a source.',
+    'arguments' => [
+      'migration' => 'Name of the migration',
+    ],
+    'examples' => [
+      'migrate-fields-source my_node' => 'List fields for the source in the my_node migration',
+    ],
+    'drupal dependencies' => ['migrate_tools'],
+    'aliases' => ['mfs'],
+  ];
+
   return $items;
 }
 
@@ -371,6 +383,25 @@ function drush_migrate_tools_migrate_messages($migration_id) {
         drush_print_table($table, TRUE, $widths);
       }
     }
+  }
+  else {
+    drush_log(dt('Migration @id does not exist', ['@id' => $migration_id]), 'error');
+  }
+}
+
+/**
+ * @param string $migration_id
+ */
+function drush_migrate_tools_migrate_fields_source($migration_id) {
+  /** @var Migration $migration */
+  $migration = Migration::load($migration_id);
+  if ($migration) {
+    $source = $migration->getSourcePlugin();
+    $table = [];
+    foreach ($source->fields() as $machine_name => $description) {
+      $table[] = [strip_tags($description), $machine_name];
+    }
+    drush_print_table($table);
   }
   else {
     drush_log(dt('Migration @id does not exist', ['@id' => $migration_id]), 'error');
