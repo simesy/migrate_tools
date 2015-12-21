@@ -3,7 +3,7 @@
     "description": "Tools to assist in developing and running migrations.",
     "type": "drupal-module",
     "require": {
-        "drupal/migrate_plus": "8.*"
+        "drupal/migrate_plus": "dev-8.x-1.x"
     },
     "license": "GPL2"
 }
